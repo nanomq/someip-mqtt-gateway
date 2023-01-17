@@ -29,20 +29,20 @@ using namespace v1_2::commonapi::examples;
 #define LOG_INF VSOMEIP_INFO
 #define LOG_ERR VSOMEIP_ERROR
 
-static char *sub_topic = "topic/sub";
-static char *pub_topic = "topic/pub";
-static char *address = "mqtt-tcp://localhost:1883";
-static char *username = "username";
-static char *password = "passwd";
-static char *clientid = "vsomeip_gateway";
+static const char *sub_topic = "topic/sub";
+static const char *pub_topic = "topic/pub";
+static const char *address = "mqtt-tcp://localhost:1883";
+static const char *username = "username";
+static const char *password = "passwd";
+static const char *clientid = "vsomeip_gateway";
 static bool clean_start = true;
 static int sub_qos = 0;
 static int proto_ver = 4;
 static int keepalive = 60;
-static int parallel = 2;
-static int nwork = 10;
+static int parallel = 10;
 static nng_socket *gsock = NULL;
 static std::shared_ptr<E03MethodsProxy<>> gmyProxy;
+static uint32_t call_num = 0;
 
 typedef enum { INIT, RECV, WAIT, SEND } work_state;
 
@@ -90,9 +90,6 @@ alloc_work(nng_socket sock, void cb(void *))
 	return (w);
 }
 
-
-
-
 int
 client_publish(nng_socket sock, const char *topic, uint8_t *payload,
     uint32_t payload_len, uint8_t qos, bool verbose)
@@ -131,13 +128,10 @@ void recv_cb(const CommonAPI::CallStatus& callStatus,
                                     "MY_FAULT") << std::endl;
     std::cout << "   Output values: y1 = " << y1 << ", y2 = " << y2 << std::endl;
 
-	uint8_t *p = (uint8_t*) "aaaaa";
-	uint32_t p_len = strlen("aaaaa");
+	std::string payload = std::to_string(y1) + ": " + y2;
 
-	client_publish(*gsock, pub_topic,  p, p_len, 0, false);
+	client_publish(*gsock, pub_topic,  (uint8_t*) payload.c_str(), payload.length(), 0, false);
 }
-
-
 
 
 void
@@ -147,12 +141,12 @@ disconnect_cb(nng_pipe p, nng_pipe_ev ev, void *arg)
 }
 
 void
-set_sub_topic(nng_mqtt_topic_qos topic_qos[], int qos, char **topic_que)
+set_sub_topic(nng_mqtt_topic_qos topic_qos[], int qos, const char *topic)
 {
 	topic_qos[0].qos = qos;
-	LOG_INF << "topic: " << topic_que[0];
-	topic_qos[0].topic.buf    = (uint8_t *) topic_que[0];
-	topic_qos[0].topic.length = strlen(topic_que[0]);
+	LOG_INF << "topic: " << topic[0];
+	topic_qos[0].topic.buf    = (uint8_t *) topic;
+	topic_qos[0].topic.length = strlen(topic);
 	return;
 }
 
@@ -164,7 +158,7 @@ connect_cb(nng_pipe p, nng_pipe_ev ev, void *arg)
 
 	nng_mqtt_topic_qos topic_qos[1];
 
-	set_sub_topic(topic_qos, sub_qos, &sub_topic);
+	set_sub_topic(topic_qos, sub_qos, sub_topic);
 	LOG_INF << "topic: " << sub_topic;
 	 topic_qos[0].qos          = 0;
 	 topic_qos[0].topic.buf    = (uint8_t *)sub_topic;
@@ -203,13 +197,8 @@ check_recv(nng_msg *msg)
 
 	// TODO parse from json
 
-    int32_t inX1 = 5;
-    std::string inX2 = "abc";
-    CommonAPI::CallStatus callStatus;
-    E03Methods::stdErrorTypeEnum methodError;
-    int32_t outY1;
-    std::string outY2;
-
+    int32_t inX1 = call_num++;
+    std::string inX2 = payload;
 
     // Asynchronous call
     std::cout << "Call foo with asynchronous semantics ..." << std::endl;
@@ -283,7 +272,7 @@ client(const char *url, nng_socket *sock_ret)
 	nng_socket   sock;
 	nng_dialer   dialer;
 	int          rv;
-	struct work *works[nwork];
+	struct work *works[parallel];
 
 	if ((rv = nng_mqtt_client_open(&sock)) != 0) {
 		LOG_ERR << "nng_socket" << rv;
@@ -292,7 +281,7 @@ client(const char *url, nng_socket *sock_ret)
 
 	*sock_ret = sock;
 
-	for (int i = 0; i < nwork; i++) {
+	for (int i = 0; i < parallel; i++) {
 		works[i] = proxy_alloc_work(sock);
 	}
 
@@ -311,6 +300,10 @@ client(const char *url, nng_socket *sock_ret)
 		nng_mqtt_msg_set_connect_password(msg, password);
 	}
 
+	if (clientid) {
+		nng_mqtt_msg_set_connect_client_id(msg, clientid);
+	}
+
 	nng_mqtt_set_connect_cb(sock, connect_cb, sock_ret);
 	nng_mqtt_set_disconnect_cb(sock, disconnect_cb, NULL);
 
@@ -321,7 +314,7 @@ client(const char *url, nng_socket *sock_ret)
 	nng_dialer_set_ptr(dialer, NNG_OPT_MQTT_CONNMSG, msg);
 	nng_dialer_start(dialer, NNG_FLAG_NONBLOCK);
 
-	for (int i = 0; i < nwork; i++) {
+	for (int i = 0; i < parallel; i++) {
 		vsomeip_gateway_sub_cb(works[i]);
 	}
 
