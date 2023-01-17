@@ -28,7 +28,7 @@ void E03MethodsStubImpl::foo(const std::shared_ptr<CommonAPI::ClientId> _client,
     std::cout << "foo called, setting new values." << std::endl;
 
     E03Methods::stdErrorTypeEnum methodError = E03Methods::stdErrorTypeEnum::MY_FAULT;
-    int32_t y1 = 42;
-    std::string y2 = "xyz";
+    int32_t y1 = _x1;
+    std::string y2 = "Hello, " + _x2;
     _reply(methodError, y1, y2);
 }
