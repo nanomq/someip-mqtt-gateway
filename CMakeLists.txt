@@ -51,7 +51,6 @@ include_directories(
 
 link_directories(
     ${COMMONAPI_LIBDIR}
-    ${COMMONAPI_DBUS_LIBDIR}
     ${COMMONAPI_SOMEIP_CMAKE_DIR}/build
     ${Boost_LIBRARY_DIR}
 )
@@ -62,7 +61,7 @@ add_subdirectory(NanoSDK)
 
 # Build Client
 add_executable(${PRJ_NAME_CLIENT} ${PRJ_CLIENT_SRCS})
-target_link_libraries(${PRJ_NAME_CLIENT} ${LINK_LIBRARIES} nng)
+target_link_libraries(${PRJ_NAME_CLIENT} ${LINK_LIBRARIES} nng CommonAPI-SomeIP)
 
 # Build service
 add_executable(${PRJ_NAME_SERVICE} ${PRJ_SERVICE_SRCS})
