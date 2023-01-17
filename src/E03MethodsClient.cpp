@@ -22,6 +22,7 @@ using namespace v1_2::commonapi::examples;
 #include <nng/supplemental/util/options.h>
 #include <nng/supplemental/util/platform.h>
 #include "nng/mqtt/mqtt_client.h"
+#include "cJSON.h"
 
 #include <vsomeip/internal/logger.hpp>
 #include <vsomeip/vsomeip.hpp>
@@ -129,6 +130,7 @@ void recv_cb(const CommonAPI::CallStatus& callStatus,
     std::cout << "   Output values: y1 = " << y1 << ", y2 = " << y2 << std::endl;
 
 	std::string payload = std::to_string(y1) + ": " + y2;
+	// TODO compose json
 
 	client_publish(*gsock, pub_topic,  (uint8_t*) payload.c_str(), payload.length(), 0, false);
 }
@@ -180,6 +182,24 @@ connect_cb(nng_pipe p, nng_pipe_ev ev, void *arg)
 	 }
 }
 
+cJSON *parse_from_json(int *inx1, std::string &inx2)
+{
+	cJSON *jso = NULL;
+	if ((jso = cJSON_Parse(inx2.c_str()))) {
+		cJSON *jso_num = cJSON_GetObjectItem(jso, "inx1");
+		cJSON *jso_str = cJSON_GetObjectItem(jso, "inx2");
+		if (jso_num) {
+			*inx1 = jso_num->valueint;
+		}
+
+		if (jso_str) {
+			inx2 = jso_str->valuestring;
+		}
+	}
+
+	return jso;
+}
+
 int
 check_recv(nng_msg *msg)
 {
@@ -195,10 +215,10 @@ check_recv(nng_msg *msg)
 	std::string topic(t, t + t_len);
 	LOG_INF << "Recv message: '" << payload << "' from '" << topic << "'";
 
-	// TODO parse from json
-
     int32_t inX1 = call_num++;
     std::string inX2 = payload;
+
+	cJSON *jso = parse_from_json(&inX1, inX2);
 
     // Asynchronous call
     std::cout << "Call foo with asynchronous semantics ..." << std::endl;
@@ -210,6 +230,7 @@ check_recv(nng_msg *msg)
                          const std::string&)> fcb = recv_cb;
     gmyProxy->fooAsync(inX1, inX2, recv_cb);
 	nng_msg_free(msg);
+	cJSON_Delete(jso);
 
 	return 0;
 }
