@@ -117,6 +117,17 @@ client_publish(nng_socket sock, const char *topic, uint8_t *payload,
 }
 
 
+
+char *compose_json(int inx1, const std::string &inx2)
+{
+	cJSON *jso = cJSON_CreateObject();
+	cJSON_AddNumberToObject(jso, "inx1", inx1);
+	cJSON_AddStringToObject(jso, "inx2", inx2.c_str());
+	char *ret = cJSON_PrintUnformatted(jso);
+	cJSON_Delete(jso);
+	return ret;
+}
+
 void recv_cb(const CommonAPI::CallStatus& callStatus,
              const E03Methods::stdErrorTypeEnum& methodError,
              const int32_t& y1,
@@ -129,10 +140,11 @@ void recv_cb(const CommonAPI::CallStatus& callStatus,
                                     "MY_FAULT") << std::endl;
     std::cout << "   Output values: y1 = " << y1 << ", y2 = " << y2 << std::endl;
 
-	std::string payload = std::to_string(y1) + ": " + y2;
 	// TODO compose json
+	char *jso_str = compose_json(y1, y2);
+	client_publish(*gsock, pub_topic,  (uint8_t*) jso_str, strlen(jso_str), 0, false);
+	cJSON_free(jso_str);
 
-	client_publish(*gsock, pub_topic,  (uint8_t*) payload.c_str(), payload.length(), 0, false);
 }
 
 
