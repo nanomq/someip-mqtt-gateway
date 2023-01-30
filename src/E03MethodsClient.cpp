@@ -147,13 +147,6 @@ void recv_cb(const CommonAPI::CallStatus& callStatus,
 
 }
 
-
-void
-disconnect_cb(nng_pipe p, nng_pipe_ev ev, void *arg)
-{
-	LOG_INF << __FUNCTION__ << ": disconnected!";
-}
-
 void
 set_sub_topic(nng_mqtt_topic_qos topic_qos[], int qos, const char *topic)
 {
@@ -165,9 +158,23 @@ set_sub_topic(nng_mqtt_topic_qos topic_qos[], int qos, const char *topic)
 }
 
 void
+disconnect_cb(nng_pipe p, nng_pipe_ev ev, void *arg)
+{
+	int reason = 0;
+	// get connect reason
+	nng_pipe_get_int(p, NNG_OPT_MQTT_DISCONNECT_REASON, &reason);
+	LOG_INF << __FUNCTION__ << ": disconnected RC [" <<  reason <<"] !";
+}
+
+void
 connect_cb(nng_pipe p, nng_pipe_ev ev, void *arg)
 {
-	LOG_INF << __FUNCTION__ << ": connected!";
+	int reason;
+	// get connect reason
+	nng_pipe_get_int(p, NNG_OPT_MQTT_CONNECT_REASON, &reason);
+
+	LOG_INF << __FUNCTION__ << ": connected RC [" << reason << "] !" ;
+
 	nng_socket sock = *(nng_socket *) arg;
 
 	nng_mqtt_topic_qos topic_qos[1];
