@@ -7,7 +7,7 @@
 #include <iostream>
 
 #include <CommonAPI/CommonAPI.hpp>
-#include "E03MethodsStubImpl.hpp"
+#include "StubImpl.hpp"
 
 int main() {
     CommonAPI::Runtime::setProperty("LogContext", "E03S");

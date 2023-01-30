@@ -32,7 +32,7 @@ using namespace v1_2::commonapi::examples;
 
 static const char *sub_topic = "topic/sub";
 static const char *pub_topic = "topic/pub";
-static const char *address = "mqtt-tcp://localhost:1883";
+static const char *address = "mqtt-tcp://localhost:1885";
 static const char *username = "username";
 static const char *password = "passwd";
 static const char *clientid = "vsomeip_gateway";
